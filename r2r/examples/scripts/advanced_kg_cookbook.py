@@ -7,13 +7,13 @@ from bs4 import BeautifulSoup, Comment
 from r2r import (
     Document,
     EntityType,
-    GenerationConfig,
-    KGAgentPipe,
-    Pipeline,
-    R2RAppBuilder,
+    KGSearchSettings,
+    R2RBuilder,
     Relation,
-    run_pipeline,
+    VectorSearchSettings,
+    generate_id_from_label,
 )
+from r2r.base.abstractions.llm import GenerationConfig
 
 
 def get_all_yc_co_directory_urls():
@@ -107,7 +107,7 @@ def print_all_relationships(provider):
 
 def main(max_entries=50, delete=False):
     # Load the R2R configuration and build the app
-    r2r_app = R2RAppBuilder(from_config="neo4j_kg").build()
+    app = R2RBuilder(from_config="neo4j_kg").build()
 
     # Specify the entity types for the KG extraction prompt
     entity_types = [
@@ -179,8 +179,8 @@ def main(max_entries=50, delete=False):
     ]
 
     # Get the prompt provider and KG provider
-    prompt_provider = r2r_app.providers.prompt
-    kg = r2r_app.providers.kg
+    prompt_provider = app.providers.prompt
+    kg = app.providers.kg
 
     # Update the KG extraction prompt with the specified entity types and relations
     kg.update_extraction_prompt(prompt_provider, entity_types, relations)
@@ -199,12 +199,13 @@ def main(max_entries=50, delete=False):
             break
         try:
             # Ingest as a text document
-            r2r_app.ingest_documents(
+            app.ingest_documents(
                 [
                     Document(
+                        id=generate_id_from_label(company),
                         type="txt",
                         data=company_data,
-                        metadata={},
+                        metadata={"title": company},
                     )
                 ]
             )
@@ -214,34 +215,26 @@ def main(max_entries=50, delete=False):
 
     print_all_relationships(kg)
 
-    kg_agent_pipe = KGAgentPipe(
-        r2r_app.providers.kg, r2r_app.providers.llm, r2r_app.providers.prompt
+    # the default prompt is `kg_agent` in `prompts/local/defaults.jsonl`
+    # `update_kg_agent_prompt` updates this with `kg_agent_with_spec`,
+    # after updating the prompt with the specified entity types and relations
+    kg.update_kg_agent_prompt(prompt_provider, entity_types, relations)
+
+    result = app.search(
+        query="Find up to 10 founders that worked at Google",
+        kg_search_settings=KGSearchSettings(use_kg_search=True),
+        vector_search_settings=VectorSearchSettings(use_vector_search=False),
     )
 
-    # Define the pipeline
-    kg_pipe = Pipeline()
-    kg_pipe.add_pipe(kg_agent_pipe)
+    print("Search Result:\n", result["kg_search_results"])
 
-    kg.update_agent_prompt(prompt_provider, entity_types, relations)
-
-    import asyncio
-
-    def restart_event_loop():
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop
-
-    restart_event_loop()
-
-    agent_result = run_pipeline(
-        kg_pipe,
-        "Find up to 10 founders that worked at Google",
+    result = app.rag(
+        query="Find up to 10 founders that worked at Google",
+        kg_search_settings=KGSearchSettings(use_kg_search=True),
+        vector_search_settings=VectorSearchSettings(use_vector_search=False),
         rag_generation_config=GenerationConfig(model="gpt-4o"),
     )
-
-    print(agent_result)
+    print("RAG Result:\n", result)
 
 
 if __name__ == "__main__":

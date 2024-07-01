@@ -5,7 +5,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Tuple
 
-from r2r.core import (
+from r2r.base import (
     EntityType,
     KGConfig,
     KGProvider,
@@ -13,7 +13,7 @@ from r2r.core import (
     format_entity_types,
     format_relations,
 )
-from r2r.core.abstractions.llama_abstractions import (
+from r2r.base.abstractions.llama_abstractions import (
     LIST_LIMIT,
     ChunkNode,
     EntityNode,
@@ -954,7 +954,7 @@ class Neo4jKGProvider(PropertyGraphStore, KGProvider):
             json.dumps(ner_kg_extraction, ensure_ascii=False),
         )
 
-    def update_agent_prompt(
+    def update_kg_agent_prompt(
         self,
         prompt_provider: PromptProvider,
         entity_types: list[EntityType],

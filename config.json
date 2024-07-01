@@ -25,9 +25,9 @@
     "provider": "None"
   },
   "ingestion":{
-    "excluded_parsers": {
-      "mp4": "default"
-    }
+    "excluded_parsers": [
+      "mp4"
+    ]
   },
   "logging": {
     "provider": "local",
@@ -38,7 +38,6 @@
     "provider": "local"
   },
   "vector_database": {
-    "provider": "local",
-    "collection_name": "demo_vecs"
+    "provider": "pgvector"
   }
 }
