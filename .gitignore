@@ -13,6 +13,7 @@ env/
 dump/*
 .next
 node_modules
+.idea
 
 coverage.xml
 .coverage
@@ -32,3 +33,5 @@ dist/
 *.test
 go.work
 go.work.sum
+
+.vscode/
